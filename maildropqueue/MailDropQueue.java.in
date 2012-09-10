@@ -1,0 +1,812 @@
+/* fails for automake: package org.smallfoot.ext; */
+/* in fact, the package name, below, must match the subdirectory from top_buildroot for Automake logic to work */
+package org.smallfoot.mdq;
+
+import java.io.*;
+//import java.io.BufferedReader;
+//import java.io.IOException;
+//import java.io.InputStream;
+//import java.io.InputStreamReader;
+////import java.sql.*;
+////import java.sql.Connection;
+////import java.sql.DriverManager;
+////import java.sql.SQLException;
+import java.text.*;
+import java.util.*;
+import gnu.getopt.Getopt;
+import gnu.getopt.LongOpt;
+////import org.smallfoot.xpath.*;
+//// chew away at these later
+////import org.smallfoot.xpath.XPathTool;
+import org.subethamail.smtp.server.SMTPServer;
+import org.subethamail.smtp.*;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPathConstants;
+import javax.mail.Session;
+import javax.mail.internet.MimeMessage;
+import javax.mail.BodyPart;
+import javax.mail.Multipart;
+import javax.activation.DataHandler;
+////import org.w3c.dom.*;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+
+/**
+ * This little app is intended to receive email messages as an SMTP, but process them by
+ * executing scripts based on recipient address.  This allows basic asynchronous processing
+ * of content for simple tasks.
+ */
+
+public class MailDropQueue implements MessageHandlerFactory
+{
+    /** singleton */
+    private Session _session = null;
+    /** singleton implementation */
+    protected Session session()
+    {
+        if (null == _session)
+        {
+            // Get the default Session object.
+            _session = Session.getDefaultInstance(System.getProperties());
+        }
+
+        return _session;
+    }
+
+    public class ActionSanityException extends Exception
+    {
+        public ActionSanityException(Throwable t)
+        {
+            super (t);
+        }
+        public ActionSanityException(String s)
+        {
+            super(s);
+        }
+        // FIXME: remove
+        public ActionSanityException()
+        {
+            super();
+        }
+    };
+
+    public class TriggerNoItemException extends Exception
+    {
+        public TriggerNoItemException(Throwable t)
+        {
+            super (t);
+        }
+        public TriggerNoItemException(String s)
+        {
+            super(s);
+        }
+        // FIXME: remove
+        public TriggerNoItemException()
+        {
+            super();
+        }
+    };
+
+    public class TriggerNoMatchException extends Exception
+    {
+        public TriggerNoMatchException(Throwable t)
+        {
+            super (t);
+        }
+        public TriggerNoMatchException(String s)
+        {
+            super(s);
+        }
+        // FIXME: remove
+        public TriggerNoMatchException()
+        {
+            super();
+        }
+    };
+
+    public class TriggerSanityException extends Exception
+    {
+        public TriggerSanityException(Throwable t)
+        {
+            super (t);
+        }
+        public TriggerSanityException(String s)
+        {
+            super(s);
+        }
+        // FIXME: remove
+        public TriggerSanityException()
+        {
+            super();
+        }
+    };
+
+
+
+    /** singleton */
+    private static DocumentBuilder _documentBuilder = null;
+    /**
+     * singleton implementation: create a new documentBuilder when needed.
+     *
+     * @return singleton documentBuilder
+     * @throws javax.xml.parsers.ParserConfigurationException if DocumentBuilderFactory.newDocumentBuilder() thinks "a document builder cannot be built to satisfy the requested configuration" (whatever that means)
+     */
+    protected static DocumentBuilder documentBuilder() throws javax.xml.parsers.ParserConfigurationException
+    {
+        if (null == _documentBuilder)
+        {
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            _documentBuilder = dbf.newDocumentBuilder();        // throws javax.xml.parsers.ParserConfigurationException
+        }
+
+        return _documentBuilder;
+    }
+
+
+
+    public enum CritType { CT_FALSE, CT_TRUE, CT_EQUAL };
+    /** A Criterion is the basic definition of matching condition for a trigger */
+    public class Criterion
+    {
+        String item;
+        CritType ctype = CritType.CT_FALSE;
+        String match;
+
+        public Criterion (String item, String match)
+        {
+            this.item = item;
+            this.match = match;
+        };
+        protected Criterion() {};
+        public Criterion (Element node) throws TriggerNoItemException, TriggerNoMatchException
+        {
+            match = null;
+            item = null;
+            /* /verbatim
+             *
+             * <condition type="equal"><recipient/><value>ftp@example.com</value></condition>
+             *
+             * /endverbatim */
+            if (null == node.getAttribute("type"))
+                ;
+            else if (node.getAttribute("type").equalsIgnoreCase("true"))
+            {
+                ctype = CritType.CT_TRUE;
+                return ;
+            }
+            else if (node.getAttribute("type").equalsIgnoreCase("equal"))
+                ctype = CritType.CT_EQUAL;
+
+for (String s: "sender,recipient,attachmentname".split(","))
+            {
+                NodeList nl = node.getElementsByTagName(s);
+                if (0 < nl.getLength())
+                {
+                    item = s;
+                    nl = node.getElementsByTagName("value");
+                    if (0 < nl.getLength()) match = nl.item(0).getTextContent();
+                }
+            }
+
+            if (null == match) throw new TriggerNoMatchException(); // "No value element found in Element: " + node.toString());
+            if (null == item) throw new TriggerNoItemException();
+        }
+        /**
+         * The matching logic here simply says:
+         * - are we an "equals" house, or a "matches" house?
+         * - considering that, for each of "recipient,attachmentname", does that item match/equal our match?
+         *
+         * This means that a @verbatim <condition><recipient/><attachmentname/><value>...</value></condition> @endverbatim
+         * would allow an OR logic, but only one of the two is accepted (logically, the last one given)
+         * so it's back to a single check for a single item... but the data schema permits more.
+         */
+        public boolean applies (String from, String to, String filename)
+        {
+            switch (ctype)
+            {
+            case CT_FALSE:
+                return false;
+            case CT_TRUE:
+                return true;
+            case CT_EQUAL:
+            {
+                if (item.equalsIgnoreCase("recipient")) return to.equalsIgnoreCase(match);
+                else if (item.equalsIgnoreCase("attachmentname")) return filename.equalsIgnoreCase(match);
+                else if (item.equalsIgnoreCase("sender")) return from.equalsIgnoreCase(match);
+                else return false;
+            }
+
+            // FIXME: case CritType.CT_MATCHES ;
+            }
+
+            return /* unreachable because all possible values are above */ false;
+        }
+    }
+
+    /** A Trigger is the basic object defining matching criteria for executing actions for each attachment of each message received */
+    public class Trigger
+    {
+        public String name;
+        Criterion crit;
+        String[] actionnames;
+
+        public Trigger (String name, String item, String match)
+        {
+            this.name = name;
+            this.crit = new Criterion(item, match);
+        }
+        public Trigger (Element node) throws TriggerSanityException
+        {
+            java.util.Vector<String> a = new java.util.Vector();
+            /* /verbatim
+             *
+             * <trigger><condition type="equal"><recipient/><value>ftp@example.com</value></condition><action>FTPPUT</action></trigger>
+             *
+             * /endverbatim */
+            name = node.getAttribute("name");
+
+            for (Node n = node.getFirstChild(); null != n; n = n.getNextSibling())
+            {
+                if (n.getNodeName().equals("condition"))
+                    try
+                    {
+                        crit = new Criterion((Element) n);
+                    }
+                    catch (TriggerNoItemException tnie)
+                    {
+                        throw new TriggerSanityException(tnie);
+                    }
+                    catch (TriggerNoMatchException tnme)
+                    {
+                        throw new TriggerSanityException(tnme);
+                    }
+                else if (n.getNodeName().equals("action")) a.add(n.getTextContent());
+                else System.err.println("warning: child element \"" + n.getNodeName() + "\" of <trigger name=\"" + name + "\"><" + n.getNodeName() + "... />...</trigger> not recognized");
+            }
+
+            actionnames = a.toArray("".split(","));
+        }
+        public boolean applies (String from, String to, String filename)
+        {
+            return crit.applies (from, to, filename);
+        }
+        public void apply(String addr_from, String addr_to, String filename)
+        {
+for (String s: actionnames)
+            {
+                System.out.println("Action: apply " + s + ": " + actions.get(s).toString() + " to this attachment");
+                actions.get(s).apply(addr_from, addr_to, filename);
+            }
+        }
+    }
+
+    /** list of actions which are checked for applicability and (if applicable) processing/triggering/execution for each attachment received */
+    public java.util.Vector<Trigger> triggers = new java.util.Vector();
+
+    /** An Action is the basic object defining tasks or actions which are executed for each attachment of each message received */
+    abstract class Action
+    {
+        String name;
+
+        protected Action (String name)
+        {
+            this.name = name;
+        }
+        /* /verbatim
+         *
+         * <ftpupload|script|log id="FTPPUT" ...action-specific...> ...action-specific... </ftpupload|script|log>
+         *
+         * /endverbatim */
+        protected Action (Element node) throws ActionSanityException
+        {
+            name = node.getAttribute("id");
+        }
+        public String toString()
+        {
+            return "action: " + name;
+        }
+        public void apply(String addr_from, String addr_to, String filename)
+        {
+            System.out.println("Action: Stubbed default: apply " + name + " to this attachment");
+        }
+    }
+
+    /** An Action is the basic object defining tasks or actions which are executed for each attachment of each message received */
+    public class FTPUploadAction extends Action
+    {
+        java.net.URL url = null;
+
+        public FTPUploadAction (String id, String url) throws java.net.MalformedURLException { super(id); this.url = new java.net.URL (url); }
+        /* /verbatim
+         *
+         * <ftpupload id="FTPPUT" href="ftp://scott:tiger@ftp.example.com/"/>
+         *
+         * "FTPPUT" matches the name in the trigger's child "action":
+         * <trigger><condition type="equal"><recipient/><value>ftp@example.com</value></condition><action>FTPPUT</action></trigger>
+         *
+         * /endverbatim */
+        public FTPUploadAction (Element node) throws java.net.MalformedURLException,ActionSanityException
+        {
+            super(node);
+
+            this.url = new java.net.URL(node.getAttribute("href"));
+            if (!url.getProtocol().equals("ftp"))
+                throw new ActionSanityException("protocol in <ftpupload href=\"...\"/> should be ftp://... ");
+        }
+        public String toString()
+        {
+            return super.toString() + " to destination: " + url;
+        }
+    }
+
+    static String tokenReplacement(int depth, java.util.Hashtable<String,String> keys, String text)
+    {
+        int replaced = 0;
+        int pos;
+
+        if (0 >= depth) return text;
+
+        while (0 <= (pos = text.indexOf('$')))
+        {
+            for (Enumeration e = keys.keys(); e.hasMoreElements(); )
+            {
+                String s = (String) e.nextElement();
+                if (text.substring(pos+1,s.length()+1).equalsIgnoreCase(s))
+                {
+                    text = text.substring(0,pos)+keys.get(s)+text.substring(pos+s.length()+1);
+                    replaced++;
+                    while (e.hasMoreElements()) e.nextElement();
+                }
+            }
+        }
+
+        if (0 < replaced) return tokenReplacement(depth-1, keys, text);
+        else return text;
+    }
+
+
+    /** An Action is the basic object defining tasks or actions which are executed for each attachment of each message received */
+    public class ScriptAction extends Action
+    {
+        String name;
+        String script;
+        String parameters;
+
+        public ScriptAction (String id, String name, String script, String parameters) throws java.net.MalformedURLException { super(id); this.name = name; this.script = script; this.parameters = parameters; }
+        /* /verbatim
+         *
+         * <script id="ID" name="somescript"/>
+         *
+         * /endverbatim */
+        public ScriptAction (Element node) throws java.net.MalformedURLException,ActionSanityException
+        {
+            super(node);
+
+            this.name	= node.getAttribute("name");
+            this.script	= node.getAttribute("script");
+            this.parameters	= node.getAttribute("parameters");
+        }
+        public String toString()
+        {
+            return super.toString() + " runs \"" + name + "\" script: " + script + " parameters: " + parameters;
+        }
+        /*
+         * Apply the action based on a trigger-match.  This involves some very basic/simple/brain-dead token-replacement that isn't remotely sexy.  In fact, sexy coding left for the day, ugly/nasty/but-it-works is subbing in for this function.
+             * So long as we have matches for a position of any token-replaceable string, replace then, and do it again...
+         * @param addr_from Email address of attachment sender
+         * @param addr_to Email address of attachment recipient on this fake-server
+         * @param filename filename of attachment for use in running script
+         */
+        public void apply(String addr_from, String addr_to, String filename)
+        {
+            java.lang.Process pr;
+            java.util.Hashtable<String,String> p = new java.util.Hashtable();
+
+            p.put("sender", addr_from);
+            p.put("recipient", addr_to);
+            p.put("attachmentname", filename);
+
+            String go = script + " " + tokenReplacement(20, p, parameters);
+            System.out.println("script running (" + script + " " + parameters + ") is: \"" + go + "\"");
+            try
+            {
+                pr = java.lang.Runtime.getRuntime().exec(go);
+
+                /**
+                 * Copy the child process's stdout to the parent's stdout.
+                 *
+                 * @todo Stdout from forked child processes should perhaps be done in a thread of its own
+                 * to avoid blocking, but going within this thread now to get this completed while accepting
+                 * some risk.
+                 *
+                 * @todo this should also be moved ot either a log message or a discard
+                     */
+
+                BufferedReader stdin = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+                String textline;
+                while (null != (textline=stdin.readLine()))
+                    System.out.println(textline);
+
+                pr.waitFor();
+                System.out.println("script running (" + go + ") results in: " + pr.exitValue());
+
+            }
+            catch (java.io.IOException ioe)
+            {
+                ioe.printStackTrace();
+            }
+            catch (java.lang.InterruptedException ie)
+            {
+                ie.printStackTrace();
+            }
+
+        }
+    }
+
+    /** An Action to simply log that a trigger has matched; can be sued for debugging, but is initially used in testing */
+    public class LogAction extends Action
+    {
+        String name;
+
+        public LogAction (String id, String name)
+        {
+            super(id);
+            this.name = name;
+        }
+        /* /verbatim
+         *
+         * <log id="ID" name="some log name"/>
+         *
+         * /endverbatim */
+        public LogAction (Element node) throws ActionSanityException
+        {
+            super(node);
+
+            this.name	= node.getAttribute("name");
+        }
+    }
+
+    /** list of actions which are checked for applicability and (if applicable) processing/triggering/execution for each attachment received */
+    public java.util.Hashtable<String, Action> actions = new java.util.Hashtable();
+
+    protected void addAction(Action a)
+    {
+        actions.put (a.name, a);
+    }
+
+    /** function to create a handler for each message; this is called for each message received an SMTP conversation
+     *
+     * @return instance of Handler used to process the message
+     * @param ctx Context of the conversation used when instantiating the MessageHandler descendent MailDropQueue.Handler
+     */
+    public MessageHandler create(MessageContext ctx)
+    {
+        return new Handler(ctx);
+    }
+
+    class Handler implements MessageHandler
+    {
+        MessageContext ctx;
+        String mail_from = null;
+        String mail_to = null;
+
+        public Handler(MessageContext ctx)
+        {
+            this.ctx = ctx;
+        }
+
+        public void from(String from) throws RejectException
+        {
+            if (System.getProperty("SHOW_MAILHEADER","false").equalsIgnoreCase("true"))
+                System.out.println("FROM:"+from);
+            mail_from = from;
+        }
+
+        public void recipient(String recipient) throws RejectException
+        {
+            if (System.getProperty("SHOW_MAILHEADER","false").equalsIgnoreCase("true"))
+                System.out.println("RECIPIENT:"+recipient);
+            mail_to = recipient;
+        }
+
+        /** http://www.roseindia.net/javamail/ReadMultipartMail.shtml */
+        public void listAttachments(InputStream data) throws javax.mail.MessagingException, java.io.IOException
+        {
+            MimeMessage mm = new MimeMessage (session(), data);
+            //System.out.println("MIME data extracted by converting InputStream to a MimeMessage");
+
+            Multipart multipart = (Multipart) mm.getContent();
+
+            for (int x = 0; x < multipart.getCount(); x++)
+            {
+                BodyPart bodyPart = multipart.getBodyPart(x);
+                String disposition = bodyPart.getDisposition();
+                if (disposition != null && (disposition.equals(BodyPart.ATTACHMENT)))
+                {
+                    System.out.println("Attachment detected in message:");
+
+                    DataHandler handler = bodyPart.getDataHandler();
+                    File f = new File(handler.getName());
+                    System.out.println("file name : " + f.getName() + " (" + f.getCanonicalPath() + ")");
+                    System.out.println("TO-FROM-FILENAME = " + mail_from + " " + mail_to + " " + f.getName());
+
+for (Trigger t: triggers)
+                    {
+                        if (t.applies(mail_from, mail_to, f.getName()))
+			{
+			    ((javax.mail.internet.MimeBodyPart) bodyPart).saveFile(f);
+                            t.apply(mail_from, mail_to, f.getCanonicalPath());
+			}
+                        else
+                            System.out.println("trigger " + t.name + " does not apply");
+                    }
+                }
+                else
+                {
+                    System.out.println("Non-body MIME skipped:\n" + bodyPart.getContent());
+                }
+            }
+        }
+
+        public void data(InputStream data) throws IOException
+        {
+            //System.out.println("MAIL DATA");
+            System.out.println("MAIL DATA; any attachments as follows:");
+            try
+            {
+                listAttachments(data);
+            }
+            catch (javax.mail.MessagingException me)
+            {
+                System.out.println("MIME exception (javax.mail.MessagingException): " + me.getMessage());
+            }
+
+            //System.out.println(this.convertStreamToString(data));
+        }
+
+        public void done()
+        {
+            System.out.println("Finished");
+        }
+
+        public String convertStreamToString(InputStream is)
+        {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            StringBuilder sb = new StringBuilder();
+
+            String line = null;
+            try
+            {
+                while ((line = reader.readLine()) != null)
+                {
+                    sb.append(line + "\n");
+                }
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+            return sb.toString();
+        }
+    }
+
+
+
+    /**
+     * Produce a BufferedReader for the given uri in a way that corresponds to the url protocol
+     *
+     * @return BufferedReader ready to offer back the data
+     * @param uri the file:// resource of a file, ie "file:///sample.csv"
+     */
+    protected BufferedReader openFile(String uri) throws java.io.FileNotFoundException, java.net.MalformedURLException, java.io.IOException
+    {
+        /*
+
+                if (uri.startsWith("file://"))
+                    return new BufferedReader(new FileReader (uri.substring(7)));
+                else   //if (uri.startsWith("http://"))
+                {
+                    DataSource ds = new URLDataSource(new java.net.URL(uri));
+                    return new BufferedReader(new InputStreamReader(ds.getInputStream()));
+                }
+        */
+        return null;
+    }
+
+
+
+    /**
+     * Load a config file of actions to perform on inbound messages
+     *
+     * @param configURI URI of file config file to load
+     * @throws javax.xml.parsers.ParserConfigurationException if DocumentBuilderFactory.newDocumentBuilder() thinks "a document builder cannot be built to satisfy the requested configuration" (whatever that means)
+     * @throws org.xml.sax.SAXException if any parse error occurs (typically non-conforming XML)
+     * @throws java.io.IOException if an I/O error occurs during load
+     */
+    void loadConfig(String configURI) throws javax.xml.parsers.ParserConfigurationException, org.xml.sax.SAXException, java.io.IOException
+    {
+        Document configDoc = null;
+
+        try {
+            configDoc = documentBuilder().parse(configURI);
+        }
+        catch (IllegalArgumentException e)
+        {
+            return;   // silently ignore illegal argument -- typically null parameter
+        }
+        catch (java.io.IOException ioe)
+        {
+            // pertinent?  http://weblogs.java.net/blog/kohsuke/archive/2007/04/how_to_convert.html
+            // pertinent?  http://stackoverflow.com/questions/1131273/java-file-touri-tourl-on-windows-file
+            // react to a java.io.IOE by retrying with "file://" prepended
+            if (configURI.toLowerCase().startsWith("file://"))
+            {
+                configDoc = documentBuilder().parse(new File (configURI.substring(7)));
+            }
+            //FIXME uncomment
+            //else if (-1 == configURI.toLowerCase().substr("://"))
+            //configDoc = documentBuilder().parse(new FileReader (configURI));
+        }
+
+        NodeList nodes = configDoc.getDocumentElement().getElementsByTagName("trigger");
+        for (int n = 0; n < nodes.getLength(); n++)
+        {
+            try
+            {
+                triggers.add(new Trigger ((Element) nodes.item(n)));
+            }
+            catch (TriggerSanityException tse) {}
+        }
+
+        nodes = configDoc.getDocumentElement().getElementsByTagName("ftpupload");
+        for (int n = 0; n < nodes.getLength(); n++)
+        {
+            try
+            {
+                addAction(new FTPUploadAction ((Element) nodes.item(n)));
+            }
+            catch (ActionSanityException ase)
+            {
+                System.out.println("Action Sanity Exception: the action is not logical");
+                ase.printStackTrace();
+            }
+        }
+
+        nodes = configDoc.getDocumentElement().getElementsByTagName("script");
+        for (int n = 0; n < nodes.getLength(); n++)
+        {
+            try
+            {
+                addAction(new ScriptAction ((Element) nodes.item(n)));
+            }
+            catch (ActionSanityException ase)
+            {
+                System.out.println("Action Sanity Exception: the action is not logical");
+                ase.printStackTrace();
+            }
+        }
+
+        nodes = configDoc.getDocumentElement().getElementsByTagName("log");
+        for (int n = 0; n < nodes.getLength(); n++)
+        {
+            try
+            {
+                addAction(new LogAction ((Element) nodes.item(n)));
+            }
+            catch (ActionSanityException ase)
+            {
+                System.out.println("Action Sanity Exception: the action is not logical");
+                ase.printStackTrace();
+            }
+        }
+    }
+
+
+
+    /**
+     * Basic aide-memoire on the tool's functions
+     *
+     * @param progname name of the program; traditionally this is argv0, but Java doesn't give that, so we stuff that value from one place in the main() function
+     */
+    void usage(String progname)
+    {
+        System.out.println("Usage: "+progname+" -V|--version|-H|--help");
+    }
+
+
+
+    /**
+     * Main function, as you can tell.
+     *
+     * this function merely parses the command-line to dispatch actions to the meat of the meal above.
+     * I'm using an actual GetOpt because, yes, I'm a UNIX/C hack, re-using 3-decades-old knowledge,
+     * but this also preserves both extensibility and the ability to use longopts in scripts as a
+     * way to self-document what the tool's doing.
+     *
+     * No real intelligence herein except the parse-and-redirect action.
+     */
+    public static void main(String args[])
+    {
+        MailDropQueue m = new MailDropQueue();
+        SMTPServer smtpServer = new SMTPServer(m);
+        //smtpServer.setServer("mail.chickenandporn.com");	// VIMD spelled on a phone
+        smtpServer.setPort(8463);	// VIMD spelled on a phone
+
+        int result=0;
+        int c = 4;
+        long dieMilliseconds = 0L;
+        LongOpt[] longopts = new LongOpt[c];
+        //
+        // Integec id = new Integer();
+        longopts[--c] = new LongOpt("help", LongOpt.NO_ARGUMENT, null, 'H');
+        longopts[--c] = new LongOpt("version", LongOpt.NO_ARGUMENT, null, 'V');
+
+        longopts[--c] = new LongOpt("debugdieafter", LongOpt.REQUIRED_ARGUMENT, null, 'd');
+        longopts[--c] = new LongOpt("config", LongOpt.REQUIRED_ARGUMENT, null, 'c');
+
+        Getopt g = new org.smallfoot.getopt.GetOpt("vimd", args, longopts);
+        while ((c = g.getopt()) != -1)
+        {
+            switch(c)
+            {
+            case 'V':	// print the version, stored rules, and exit
+                System.out.println("vift"+" version @VERSION@-$Revision$");
+                System.out.println(m.triggers.size() + " triggers listed" + (0 < m.triggers.size() ? " as follows:" : ""));
+for (Trigger t: m.triggers)
+                    System.out.println("trigger: " + t.name );
+                System.out.println(m.actions.size() + " actions listed" + (0 < m.actions.size() ? " as follows:" : ""));
+                for (Enumeration e = m.actions.elements(); e.hasMoreElements(); )
+                    System.out.println(((Action) e.nextElement()).toString());
+                System.out.println();
+                return;
+
+            case 'd':	// die after XX seconds
+                int seconds = Integer.parseInt(g.getOptarg());
+                dieMilliseconds = java.lang.System.currentTimeMillis() + (1000 * seconds);
+                break;
+
+            case 'c':	// read action/config file from the given filename
+                try
+                {
+                    m.loadConfig(g.getOptarg());
+                }
+                catch (javax.xml.parsers.ParserConfigurationException pce)
+                {
+                    System.err.println("DocumentBuilderFactory.newDocumentBuilder() thinks \"a document builder cannot be built to satisfy the requested configuration\"; unfortunately there's no guidance to forward on how to remedy this error");
+                }
+                catch (org.xml.sax.SAXException se)
+                {
+                    System.err.println("A SAX exception has occured, as follows; note that most cases this is an XML document that is not compliant (unbalanced open/close tags, illegal characters, etc), but the error is:" + se.getMessage());
+                }
+                catch (java.io.IOException ioe)
+                {
+                    System.err.println("An I/O Error has occured, perhaps retry the load of the configuration, or the underlying message might give some hints: " + ioe.getMessage());
+                }
+                break;
+
+                /* ... */
+
+
+            default:
+            case '?':
+                //System.out.println("option \""+c+"\" selected");
+                //System.out.println("long index = "+g.getLongind());
+            case 'H':
+                m.usage("vimd");
+                return ;
+            }
+        }
+
+        smtpServer.start();
+        try
+        {
+            while ((0L == dieMilliseconds) || (java.lang.System.currentTimeMillis() < dieMilliseconds)) Thread.sleep(1000);
+        }
+        catch (Exception e) {}
+        System.exit(result);
+    }
+}

@@ -1,0 +1,183 @@
+/*
+ * Copyright (c) Ian F. Darwin, http://www.darwinsys.com/, 1996-2002.
+ * All rights reserved. Software written by Ian F. Darwin and others.
+ * $Id: LICENSE,v 1.8 2004/02/09 03:33:38 ian Exp $
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * Java, the Duke mascot, and all variants of Sun's Java "steaming coffee
+ * cup" logo are trademarks of Sun Microsystems. Sun's, and James Gosling's,
+ * pioneering role in inventing and promulgating (and standardizing) the Java 
+ * language and environment is gratefully acknowledged.
+ * 
+ * The pioneering role of Dennis Ritchie and Bjarne Stroustrup, of AT&T, for
+ * inventing predecessor languages C and C++ is also gratefully acknowledged.
+ */
+
+import java.io.IOException;
+import java.util.Properties;
+
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.activation.FileDataSource;
+import javax.mail.BodyPart;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
+
+/**
+ * SendMime -- send a multi-part MIME email message.
+ * 
+ * @author Ian F. Darwin
+ * @version $Id: SendMime.java,v 1.8 2003/05/31 21:18:35 ian Exp $
+ */
+public class SendMime {
+
+ /** from http://www.coderanch.com/t/560010/java/java/send-java-mail-big-file */
+
+ protected void addAttachments(String[] attachments, Multipart multipart)  
+                throws MessagingException, AddressException, IOException
+ {  
+                System.out.println("attaching");  
+            for (int i = 0; i <= attachments.length - 1; i++) {  
+                String filename = attachments[i];  
+                        
+                MimeBodyPart attachmentBodyPart = new MimeBodyPart();  
+                //use a JAF FileDataSource as it does MIME type detection  
+               DataSource source = new FileDataSource(filename);  
+                   
+                attachmentBodyPart.setDataHandler(new DataHandler(source));  
+                     
+                attachmentBodyPart.setFileName(filename);  
+  
+                //add the attachment  
+                multipart.addBodyPart(attachmentBodyPart);  
+                       
+            }
+  }
+
+  /** The message recipient. */
+  protected String message_recip = "example-recipient@example.com";
+
+  /* What's it all about, Alfie? */
+  protected String message_subject = "Report 47 Completed 2012-08-11 10:44:02";
+
+  /** The message CC recipient. */
+  protected String message_cc = "example-cc@example.com";
+
+  /** The text/plain message body */
+  protected String message_body = "The report format 47 was generated at 2012-08-11 10:44:02, output attached";
+
+  /* The text/html data. */
+  protected String html_data = "<HTML><HEAD><TITLE>" + message_subject + "</TITLE></HEAD>"
+      + "<BODY><P>The report <em>Format 47</em> was generated at <em>2012-08-11 10:44:02</em>, output attached</BODY></HTML>";
+
+  /** The JavaMail session object */
+  protected Session session;
+
+  /** The JavaMail message object */
+  protected Message mesg;
+
+  /** Do the work: send the mail to the SMTP server. */
+  public void doSend() throws IOException, MessagingException {
+
+
+
+      // Get system properties
+      Properties properties = System.getProperties();
+
+      // Setup mail server
+      properties.setProperty("mail.smtp.host", "127.0.0.1");
+      properties.setProperty("mail.smtp.port", "8463");
+
+      // Get the default Session object.
+      Session session = Session.getDefaultInstance(properties);
+
+
+
+
+
+    // Create the Session object
+    //session = Session.getDefaultInstance(null, null);
+    session.setDebug(true); // Verbose!
+
+    try {
+      // create a message
+      mesg = new MimeMessage(session);
+
+      // From Address - this should come from a Properties...
+      mesg.setFrom(new InternetAddress("example-sender@example.com"));
+
+      // TO Address
+      InternetAddress toAddress = new InternetAddress(message_recip);
+      mesg.addRecipient(Message.RecipientType.TO, toAddress);
+
+      // CC Address
+      InternetAddress ccAddress = new InternetAddress(message_cc);
+      mesg.addRecipient(Message.RecipientType.CC, ccAddress);
+
+      // The Subject
+      mesg.setSubject(message_subject);
+
+      // Now the message body.
+      Multipart mp = new MimeMultipart();
+
+      BodyPart textPart = new MimeBodyPart();
+      textPart.setText(message_body); // sets type to "text/plain"
+
+      BodyPart pixPart = new MimeBodyPart();
+      pixPart.setContent(html_data, "text/html");
+
+      // Collect the Parts into the MultiPart
+      mp.addBodyPart(textPart);
+      mp.addBodyPart(pixPart);
+
+      addAttachments( "SCaRTDaily1dat6hr.csv.zip".split(","), mp);
+
+      // Put the MultiPart into the Message
+      mesg.setContent(mp);
+
+      // Finally, send the message!
+      Transport.send(mesg);
+
+    } catch (MessagingException ex) {
+      System.err.println(ex);
+      ex.printStackTrace(System.err);
+    }
+  }
+
+  /** Simple test case driver */
+  public static void main(String[] av) throws Exception {
+    SendMime sm = new SendMime();
+    sm.doSend();
+  }
+}
+
+
+

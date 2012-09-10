@@ -1,0 +1,257 @@
+AT_INIT()
+
+AT_SETUP(tool check)
+dnl      ----------
+
+AT_TESTED([java])
+
+AT_CLEANUP()
+
+
+AT_SETUP(MailDispatcher)
+dnl      --------------
+
+AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -H], 0, [Usage: maildropqueue -V|--version|-H|--help
+], [])
+AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -V], 0, [stdout],[])
+dnl FIXME
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+0 triggers listed
+0 actions listed
+
+], [])
+
+AT_DATA([actions.xml], [<?xml version='1.0' ?>
+<actions>
+  <trigger name="equal-recip"><condition type="equal"><recipient/><value>ftp@example.com</value></condition><action>FTPPUT</action></trigger>
+  <ftpupload id="FTPPUT" href="ftp://scott:tiger@ftp.example.com/"/>
+</actions>
+])
+AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -c file://actions.xml -V], 0, [stdout],[])
+dnl FIXME
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+1 triggers listed as follows:
+trigger: equal-recip
+1 actions listed as follows:
+action: FTPPUT to destination: ftp://scott:tiger@ftp.example.com/
+
+], [])
+
+AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -d 4 >maildropqueue.out 2>maildropqueue.err &], 0, [], [])
+AT_CHECK([sleep 1], 0, [], [])
+
+AT_CHECK([if test @BASE64@ = missing ; then exit 77; fi])
+
+AT_CHECK([if test @FILE@ = missing ; then exit 77; fi])
+
+AT_CHECK([if test @SED@ = missing ; then exit 77; fi])
+
+AT_CHECK([if test @NC@ = missing ; then exit 77; fi])
+
+AT_DATA([letter.preamble], [EHLO localhost.localdomain
+MAIL FROM: chickenandporn@mac.com
+RCPT TO: chickenandporn@gmail.com
+DATA
+
+])
+
+AT_DATA([letter.mime], [From: chickenandporn@mac.com
+To: chickenandporn@gmail.com
+Subject: Test Email
+MIME-version: 1.0
+Content-Type: Multipart/Mixed; boundary="ATTACHMENT-BOUNDRY"
+
+File is attached
+
+--ATTACHMENT-BOUNDRY
+])
+
+AT_CHECK([@FILE@ -I $abs_srcdir/../maildropqueue/SCaRTDaily1dat6hr.csv.zip | @SED@ -e 's/^.*:/Content-type:/g;s/; .*$/;/g' >> letter.mime], 0, [], [])
+dnl AT_CHECK([echo 'Content-Transfer-Encoding: base64' >> letter.mime], 0, [], [])
+dnl AT_CHECK([echo 'Content-Disposition: inline; filename=SCaRTDaily1dat6hr.csv.zip' >> letter.mime], 0, [], [])
+dnl AT_CHECK([echo '' >> letter.mime], 0, [], [])
+dnl AT_CHECK([@BASE64@ -b 66 -i $abs_srcdir/../maildropqueue/SCaRTDaily1dat6hr.csv.zip >> letter.mime], 0, [], [])
+dnl AT_CHECK([echo '' >> letter.mime], 0, [], [])
+
+dnl AT_CHECK([echo '--ATTACHMENT-BOUNDRY--' >> letter.mime], 0, [], [])
+
+dnl AT_CHECK([echo letter.preamble letter.mime @NC@ localhost 8463], 0, [ignore], [ignore])
+
+AT_CHECK([cp $abs_srcdir/../maildropqueue/SCaRTDaily1dat6hr.csv.zip .], 0, [], [])
+dnl AT_CHECK([java -classpath $abs_srcdir/../maildropqueue/mail.jar:$abs_srcdir/../maildropqueue/java-getopt-1.0.13.jar:$abs_srcdir/../maildropqueue/subethasmtp-3.1.7.jar:$abs_srcdir/../maildropqueue/activation.jar:$abs_srcdir/../maildropqueue/jsr305-1.3.9.jar:$abs_srcdir/.. SendEmail], 0,[],[])
+AT_CHECK([java -classpath $abs_srcdir/../maildropqueue/mail.jar:$abs_srcdir/../maildropqueue/java-getopt-1.0.13.jar:$abs_srcdir/../maildropqueue/subethasmtp-3.1.7.jar:$abs_srcdir/../maildropqueue/activation.jar:$abs_srcdir/../maildropqueue/jsr305-1.3.9.jar:$abs_srcdir/.. SendMime], 0,[stdout],[ignore])
+AT_CHECK([sed -e "s!$abs_srcdir!consistentpathname!g" maildropqueue.out], 0, [MAIL DATA; any attachments as follows:
+Non-body MIME skipped:
+The report format 47 was generated at 2012-08-11 10:44:02, output attached
+Non-body MIME skipped:
+<HTML><HEAD><TITLE>Report 47 Completed 2012-08-11 10:44:02</TITLE></HEAD><BODY><P>The report <em>Format 47</em> was generated at <em>2012-08-11 10:44:02</em>, output attached</BODY></HTML>
+Attachment detected in message:
+file name : SCaRTDaily1dat6hr.csv.zip (consistentpathname/testsuite.dir/53/SCaRTDaily1dat6hr.csv.zip)
+TO-FROM-FILENAME = example-sender@example.com example-cc@example.com SCaRTDaily1dat6hr.csv.zip
+Finished
+], [ignore])
+AT_CHECK([cat maildropqueue.err], 0, [stdout], [ignore])
+
+exit 0
+
+
+
+
+AT_CHECK([cat maildropqueue.out], 0, [stdout], [])
+
+AT_CLEANUP()
+
+
+
+AT_SETUP(MailDispatcher FTP Upload)
+dnl      -------------------------
+
+AT_DATA([action-ftp.xml], [<?xml version='1.0' ?>
+<actions>
+  <trigger name="all"><condition type="equal"><attachmentname/><value>SCaRTDaily1dat6hr.csv.zip</value></condition><action>FTPPUT</action></trigger>
+  <ftpupload id="FTPPUT" href="@WITHTESTFTPURL@"/>
+</actions>
+])
+
+AT_CHECK([if test @WITHTESTFTPURL@ = no ; then exit 77; fi])
+
+AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -c file://action-ftp.xml -V], 0, [stdout],[])
+dnl FIXME
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+1 triggers listed as follows:
+trigger: all
+1 actions listed as follows:
+action: FTPPUT
+
+], [])
+
+AT_CHECK([java -DSHOW_MAILHEADER=true -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -d 4 -c file://action-ftp.xml >maildropqueue.out 2>maildropqueue.err &], 0, [], [])
+AT_CHECK([sleep 1], 0, [], [])
+
+AT_CHECK([cp $abs_srcdir/../maildropqueue/SCaRTDaily1dat6hr.csv.zip .], 0, [], [])
+AT_CHECK([java -classpath $abs_srcdir/../maildropqueue/mail.jar:$abs_srcdir/../maildropqueue/java-getopt-1.0.13.jar:$abs_srcdir/../maildropqueue/subethasmtp-3.1.7.jar:$abs_srcdir/../maildropqueue/activation.jar:$abs_srcdir/../maildropqueue/jsr305-1.3.9.jar:$abs_srcdir/.. SendMime], 0,[stdout],[ignore])
+AT_CHECK([cat maildropqueue.err], 0, [stdout], [ignore])
+AT_CHECK([sed -e "s!$abs_srcdir!consistentpathname!g" maildropqueue.out], 0, [FROM:example-sender@example.com
+RECIPIENT:example-recipient@example.com
+RECIPIENT:example-cc@example.com
+MAIL DATA; any attachments as follows:
+Non-body MIME skipped:
+The report format 47 was generated at 2012-08-11 10:44:02, output attached
+Non-body MIME skipped:
+<HTML><HEAD><TITLE>Report 47 Completed 2012-08-11 10:44:02</TITLE></HEAD><BODY><P>The report <em>Format 47</em> was generated at <em>2012-08-11 10:44:02</em>, output attached</BODY></HTML>
+Attachment detected in message:
+file name : SCaRTDaily1dat6hr.csv.zip (consistentpathname/testsuite.dir/53/SCaRTDaily1dat6hr.csv.zip)
+TO-FROM-FILENAME = example-sender@example.com example-cc@example.com SCaRTDaily1dat6hr.csv.zip
+apply LOG to this tuple
+Finished
+], [ignore])
+
+AT_CLEANUP()
+
+
+AT_SETUP(MailDispatcher LogWriter)
+dnl      -----------------------
+
+AT_DATA([action-logonly.xml], [<?xml version='1.0' ?>
+<actions>
+  <trigger name="all"><condition type="true"/><action>LOG</action></trigger>
+  <log id="LOG" name="logaction"/>
+</actions>
+])
+
+AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -c file://action-logonly.xml -V], 0, [stdout],[])
+dnl FIXME
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+1 triggers listed as follows:
+trigger: all
+1 actions listed as follows:
+action: LOG
+
+], [])
+
+
+AT_CHECK([java -DSHOW_MAILHEADER=true -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -d 4 -c file://action-logonly.xml >maildropqueue.out 2>maildropqueue.err &], 0, [], [])
+AT_CHECK([sleep 1], 0, [], [])
+
+AT_CHECK([cp $abs_srcdir/../maildropqueue/SCaRTDaily1dat6hr.csv.zip .], 0, [], [])
+AT_CHECK([java -classpath $abs_srcdir/../maildropqueue/mail.jar:$abs_srcdir/../maildropqueue/java-getopt-1.0.13.jar:$abs_srcdir/../maildropqueue/subethasmtp-3.1.7.jar:$abs_srcdir/../maildropqueue/activation.jar:$abs_srcdir/../maildropqueue/jsr305-1.3.9.jar:$abs_srcdir/.. SendMime], 0,[stdout],[ignore])
+AT_CHECK([cat maildropqueue.err], 0, [stdout], [ignore])
+AT_CHECK([sed -e "s!$abs_srcdir!consistentpathname!g" maildropqueue.out], 0, [FROM:example-sender@example.com
+RECIPIENT:example-recipient@example.com
+RECIPIENT:example-cc@example.com
+MAIL DATA; any attachments as follows:
+Non-body MIME skipped:
+The report format 47 was generated at 2012-08-11 10:44:02, output attached
+Non-body MIME skipped:
+<HTML><HEAD><TITLE>Report 47 Completed 2012-08-11 10:44:02</TITLE></HEAD><BODY><P>The report <em>Format 47</em> was generated at <em>2012-08-11 10:44:02</em>, output attached</BODY></HTML>
+Attachment detected in message:
+file name : SCaRTDaily1dat6hr.csv.zip (consistentpathname/testsuite.dir/55/SCaRTDaily1dat6hr.csv.zip)
+TO-FROM-FILENAME = example-sender@example.com example-cc@example.com SCaRTDaily1dat6hr.csv.zip
+Action: apply LOG: action: LOG to this attachment
+Action: Stubbed default: apply LOG to this attachment
+Finished
+], [ignore])
+
+AT_CLEANUP()
+
+
+AT_SETUP(java MailDispatcher Script Runner)
+dnl      ----------------------------
+
+AT_DATA([action-script.xml], [<?xml version='1.0' ?>
+<actions>
+  <trigger name="all"><condition type="true"/><action>MD5BAT</action></trigger>
+  <script id="MD5BAT" name="checksumbat" script="@MD5@" parameters="$attachmentname"/>
+</actions>
+])
+
+AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -c file://action-script.xml -V], 0, [stdout],[])
+dnl FIXME
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+1 triggers listed as follows:
+trigger: all
+1 actions listed as follows:
+action: MD5BAT runs "checksumbat" script: @MD5@ parameters: $attachmentname
+
+], [])
+
+
+AT_CHECK([java -DSHOW_MAILHEADER=true -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -d 4 -c file://action-script.xml >maildropqueue.out 2>maildropqueue.err &], 0, [], [])
+AT_CHECK([sleep 1], 0, [], [])
+
+AT_CHECK([cp $abs_srcdir/../maildropqueue/SCaRTDaily1dat6hr.csv.zip .], 0, [], [])
+AT_CHECK([ls -al], 0, [stdout], [stderr])
+AT_CHECK([@MD5@ $abs_srcdir/../maildropqueue/SCaRTDaily1dat6hr.csv.zip SCaRTDaily1dat6hr.csv.zip], 0, [stdout], [])
+AT_CHECK([java -classpath $abs_srcdir/../maildropqueue/mail.jar:$abs_srcdir/../maildropqueue/java-getopt-1.0.13.jar:$abs_srcdir/../maildropqueue/subethasmtp-3.1.7.jar:$abs_srcdir/../maildropqueue/activation.jar:$abs_srcdir/../maildropqueue/jsr305-1.3.9.jar:$abs_srcdir/.. SendMime], 0,[stdout],[ignore])
+AT_CHECK([cat maildropqueue.err], 0, [stdout], [ignore])
+AT_CHECK([sed -e "s!$abs_srcdir!consistentpathname!g" maildropqueue.out], 0, [FROM:example-sender@example.com
+RECIPIENT:example-recipient@example.com
+RECIPIENT:example-cc@example.com
+MAIL DATA; any attachments as follows:
+Non-body MIME skipped:
+The report format 47 was generated at 2012-08-11 10:44:02, output attached
+Non-body MIME skipped:
+<HTML><HEAD><TITLE>Report 47 Completed 2012-08-11 10:44:02</TITLE></HEAD><BODY><P>The report <em>Format 47</em> was generated at <em>2012-08-11 10:44:02</em>, output attached</BODY></HTML>
+Attachment detected in message:
+file name : SCaRTDaily1dat6hr.csv.zip (consistentpathname/testsuite.dir/56/SCaRTDaily1dat6hr.csv.zip)
+TO-FROM-FILENAME = example-sender@example.com example-cc@example.com SCaRTDaily1dat6hr.csv.zip
+Action: apply MD5BAT: action: MD5BAT runs "checksumbat" script: @MD5@ parameters: $attachmentname to this attachment
+script running (@MD5@ $attachmentname) is: "/sbin/md5 consistentpathname/testsuite.dir/56/SCaRTDaily1dat6hr.csv.zip"
+MD5 (consistentpathname/testsuite.dir/56/SCaRTDaily1dat6hr.csv.zip) = d55b54aba5d973b72595079c14b795ef
+script running (@MD5@ consistentpathname/testsuite.dir/56/SCaRTDaily1dat6hr.csv.zip) results in: 0
+Finished
+], [ignore])
+
+AT_CLEANUP()
+
+
+AT_SETUP(Doxygen confirmation of marked-up content)
+dnl      -----------------------------------------
+
+AT_CHECK([if test @DOXYGEN@ = missing ; then exit 77; fi])
+AT_CHECK([make -C $abs_srcdir/.. doc], 0, [ignore],[stderr])
+dnl used to put the errors at the bottom of the output
+AT_CHECK([cat stderr], 0, [],[])
+
+AT_CLEANUP()
+

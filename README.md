@@ -13,7 +13,7 @@ The general idea is that you have a list of actions:
 
 These actions are then spelled out as names:
 
-<ACTION ID="uniqueID" name="easier name"> action-pecific stuff </ACTION>
+<ACTION ID="uniqueID" name="easier name"> action-specific stuff </ACTION>
 
 A bunch of these make up a set of actions.
 
@@ -33,7 +33,7 @@ Each trigger activates one or more actions:
 Building It
 ===========
 
-If you've gotten his far, you've got the source code.  The only thing remaining is to build it:
+If you've gotten this far, you've got the source code.  The only thing remaining is to build it:
 
 1) autoreconf -vfi
 2) make

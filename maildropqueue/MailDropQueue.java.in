@@ -169,7 +169,7 @@ public class MailDropQueue implements MessageHandlerFactory
             else if (node.getAttribute("type").equalsIgnoreCase("equal"))
                 ctype = CritType.CT_EQUAL;
 
-	    /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
+            /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
 for (String s: "sender,recipient,attachmentname".split(","))
             {
                 NodeList nl = node.getElementsByTagName(s);
@@ -265,7 +265,7 @@ for (String s: "sender,recipient,attachmentname".split(","))
         }
         public void apply(String addr_from, String addr_to, String filename)
         {
-	    /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
+            /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
 for (String s: actionnames)
             {
                 System.out.println("Action: apply " + s + ": " + actions.get(s).toString() + " to this attachment");
@@ -538,7 +538,7 @@ for (String s: actionnames)
                     System.out.println("file name : " + f.getName() + " (" + f.getCanonicalPath() + ")");
                     System.out.println("TO-FROM-FILENAME = " + mail_from + " " + mail_to + " " + f.getName());
 
-	            /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
+                    /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
 for (Trigger t: triggers)
                     {
                         if (t.applies(mail_from, mail_to, f.getName()))
@@ -751,16 +751,16 @@ for (Trigger t: triggers)
         longopts[--c] = new LongOpt("debugdieafter", LongOpt.REQUIRED_ARGUMENT, null, 'd');
         longopts[--c] = new LongOpt("config", LongOpt.REQUIRED_ARGUMENT, null, 'c');
 
-	/* the following two @DO_SMALLFOOT... stuff causes either one or the other line's comment
-	 * termination to get bombed out -- effectively causing the comment block to continue to
-	 * the end of the line, where a comment brace awaits to trap the unterminated comment. 
-	 * Somewhat like a cartoon rabbit-trap made of a box baited with a carrot, but this trap
-	 * causes either one or the other "Getopt g = ..." to be uncommented, effectively honouring
-	 * the configure-level --with-smgetopt option at compile-time (well, config.status
-	 * -triggered compiler-parser-time)
-	 */
+        /* the following two @DO_SMALLFOOT... stuff causes either one or the other line's comment
+         * termination to get bombed out -- effectively causing the comment block to continue to
+         * the end of the line, where a comment brace awaits to trap the unterminated comment.
+         * Somewhat like a cartoon rabbit-trap made of a box baited with a carrot, but this trap
+         * causes either one or the other "Getopt g = ..." to be uncommented, effectively honouring
+         * the configure-level --with-smgetopt option at compile-time (well, config.status
+         * -triggered compiler-parser-time)
+         */
 
-	/* *@DO_SMALLFOOTGETOPT_TRUE@/	Getopt g = new org.smallfoot.getopt.GetOpt("maildropqueue", args, longopts);	/* */
+        /* *@DO_SMALLFOOTGETOPT_TRUE@/	Getopt g = new org.smallfoot.getopt.GetOpt("maildropqueue", args, longopts);	/* */
         /* *@DO_SMALLFOOTGETOPT_FALSE@/	Getopt g = new gnu.getopt.Getopt("maildropqueue", args, "HVd:c:", longopts);	/* */
         while ((c = g.getopt()) != -1)
         {
@@ -769,7 +769,7 @@ for (Trigger t: triggers)
             case 'V':	// print the version, stored rules, and exit
                 System.out.println("maildropqueue"+" version @VERSION@-$Revision$");
                 System.out.println(m.triggers.size() + " triggers listed" + (0 < m.triggers.size() ? " as follows:" : ""));
-	        /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
+                /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
 for (Trigger t: m.triggers)
                     System.out.println("trigger: " + t.name );
                 System.out.println(m.actions.size() + " actions listed" + (0 < m.actions.size() ? " as follows:" : ""));
@@ -820,13 +820,13 @@ for (Trigger t: m.triggers)
         {
             while ((0L == dieMilliseconds) || (java.lang.System.currentTimeMillis() < dieMilliseconds)) Thread.sleep(1000);
         }
-	/*
-	 * Pokemon exception -- gotta catch 'em all -- to catch interrupted execution...
-	 * we don't care why we stopped sleeping, just wake up and die. 
-	 *
-	 * Hmm.  "Wake Up and Die".
-         * Sounds like a new Ian Flemming novel set in a Retirement Home for Old Spies.
-	 */
+        /*
+         * Pokemon exception -- gotta catch 'em all -- to catch interrupted execution...
+         * we don't care why we stopped sleeping, just wake up and die.
+         *
+         * Hmm.  "Wake Up and Die".
+             * Sounds like a new Ian Flemming novel set in a Retirement Home for Old Spies.
+         */
         catch (Exception e) {}
         System.exit(result);
     }

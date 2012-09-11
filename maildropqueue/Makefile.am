@@ -1,10 +1,10 @@
 nodist_pkgdata_JAVA = MailDropQueue.java SendMime.java
-nodist_pkgdata_DATA = mdq.jar 
+nodist_pkgdata_DATA = maildropqueue.jar 
 
 EXTRA_DIST = $(nodist_pkgdata_JAVA)  MailDropQueue.java.in
 CONFIG_CLEAN_FILES = @PACKAGE@.jar
 
-AM_JAVACFLAGS= -cp $(top_builddir)/$(subdir)/mail.jar:$(top_builddir)/java-pre/getopt.jar:$(top_builddir)/$(subdir)/subethasmtp-3.1.7.jar:$(top_builddir)/$(subdir)/activation.jar:$(top_builddir)/$(subdir)/jsr305-1.3.9.jar:$(top_builddir)
+AM_JAVACFLAGS = -cp $(top_builddir)/$(subdir)/mail.jar:$(top_builddir)/java-pre/getopt.jar:$(top_builddir)/$(subdir)/subethasmtp-3.1.7.jar:$(top_builddir)/$(subdir)/activation.jar:$(top_builddir)/$(subdir)/jsr305-1.3.9.jar:$(top_builddir)
 
 BUILDTMP=$(shell date +%s)
 BUILT_SOURCES =

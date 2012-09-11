@@ -24,6 +24,23 @@ AC_PROG_MAKE_SET
 AC_SUBST(AUTOM4TE, autom4te)
 
 AC_PATH_PROGS(XMLLINT, [xmllint], [missing xmllint])
+AC_PATH_PROGS(AWK, [awk gawk nawk], [missing awk])
+AC_PATH_PROGS(DOT, [dot], missing, $PATH:/usr/local/bin:/usr/local/graph*/bin)
+AC_SUBST(PATHDOT, [`dirname "${DOT}"`])
+AM_CONDITIONAL(DO_DOT, test "x$DOT" != "xmissing")
+AM_CONDITIONAL(DO_DOXYGEN, test "x$DOXYGEN" != "xmissing" -a "x$DOT" != "xmissing")
+if test "x$DOT" != "xmissing"; then HAVE_DOT=yes; else HAVE_DOT=no; fi
+AC_SUBST(HAVE_DOT)
+AC_PATH_PROGS(ASTYLE, [astyle], missing, $PATH:$HOME/bin)
+AM_CONDITIONAL(DO_ASTYLE, test "x$ASTYLE" != "xmissing")
+AC_PATH_PROGS(MD5, [md5 md5sum], missing)
+CHECKMD5=$(${MD5} tests-autotest/Makefile.am | ${AWK} '{if (2 == NF) print $1 ; else print $NF;}')
+UCHECKMD5=$(echo "${CHECKMD5}" | tr "[a-z]" "[A-Z]")
+AC_SUBST([CHECKMD5], ${CHECKMD5})
+AC_SUBST([UCHECKMD5], ${UCHECKMD5})
+AC_PATH_PROGS(RPMBUILD, [rpmbuild], [missing rpmbuild])
+AM_CONDITIONAL(HAVE_RPMBUILD, [test "x$RPMBUILD" != "xmissing rpmbuild"])
+
 AC_ARG_WITH(xmllintcommentindent,
 [AS_HELP_STRING([--with-xmllintcommentindent],[Set XML-comment indentation fudge such as xmllint-2.6.x/2.7.x differences; default=detect])],
 [
@@ -59,22 +76,19 @@ AC_ARG_WITH(doxygen,
 [
 	DOXYGEN=missing 
 ])
-AC_PATH_PROGS(AWK, [awk gawk nawk], [missing awk])
-AC_PATH_PROGS(DOT, [dot], missing, $PATH:/usr/local/bin:/usr/local/graph*/bin)
-AC_SUBST(PATHDOT, [`dirname "${DOT}"`])
-AM_CONDITIONAL(DO_DOT, test "x$DOT" != "xmissing")
-AM_CONDITIONAL(DO_DOXYGEN, test "x$DOXYGEN" != "xmissing" -a "x$DOT" != "xmissing")
-if test "x$DOT" != "xmissing"; then HAVE_DOT=yes; else HAVE_DOT=no; fi
-AC_SUBST(HAVE_DOT)
-AC_PATH_PROGS(ASTYLE, [astyle], missing, $PATH:$HOME/bin)
-AM_CONDITIONAL(DO_ASTYLE, test "x$ASTYLE" != "xmissing")
-AC_PATH_PROGS(MD5, [md5 md5sum], missing)
-CHECKMD5=$(${MD5} tests-autotest/Makefile.am | ${AWK} '{if (2 == NF) print $1 ; else print $NF;}')
-UCHECKMD5=$(echo "${CHECKMD5}" | tr "[a-z]" "[A-Z]")
-AC_SUBST([CHECKMD5], ${CHECKMD5})
-AC_SUBST([UCHECKMD5], ${UCHECKMD5})
-AC_PATH_PROGS(RPMBUILD, [rpmbuild], [missing rpmbuild])
-AM_CONDITIONAL(HAVE_RPMBUILD, [test "x$RPMBUILD" != "xmissing rpmbuild"])
+
+AC_ARG_WITH(testport,
+[AS_HELP_STRING([--with-testport],[Indicate default port for testing; (default=8025)])],
+[
+    case "$withval" in
+	""|"no"|"8463") TESTPORT=8463 ;;
+	*) TESTPORT=$withval ;;
+    esac
+],
+[
+	TESTPORT=8025
+])
+AC_SUBST([TESTPORT], ${TESTPORT})
 
 SVN_CHECK_JDK([1.6.0])
 AM_CONDITIONAL(DO_JAVA, test "$JAVAC" != none)
@@ -93,6 +107,20 @@ AC_ARG_ENABLE(autotest,
 ])
 AM_CONDITIONAL(DO_AUTOTEST, test "$ENAB" = yes)
 
+AC_ARG_WITH(smgetopt,
+[AS_HELP_STRING([--with-smgetopt],[Enable smallfoot getopt; default=disabled])],
+[
+    case "$withval" in
+	"yes") ENABSMGETOPT=yes ;;
+	"no")  ENABSMGETOPT=no  ;;
+	*) ENABSMGETOPT=no ;;
+    esac
+],
+[
+    ENABSMGETOPT=no
+])
+AM_CONDITIONAL(DO_SMALLFOOTGETOPT, test "$ENABSMGETOPT" != no)
+
 AC_ARG_WITH(testftpurl,
 [AS_HELP_STRING([--with-testftpurl],[Enable test of FTP upload by giving a destination URL; default=disabled])],
 [
@@ -110,7 +138,7 @@ AC_SUBST([WITHTESTFTPURL], ${WITHTESTFTPURL})
 
 AC_CONFIG_FILES(Makefile
   java-pre/Makefile
-  maildropqueue/Makefile maildropqueue/MailDropQueue.java
+  maildropqueue/Makefile maildropqueue/MailDropQueue.java maildropqueue/SendMime.java
   tests-autotest/Makefile tests-autotest/atlocal tests-autotest/testsuite.at
 )
 

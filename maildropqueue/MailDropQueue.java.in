@@ -1,34 +1,22 @@
-/* fails for automake: package org.smallfoot.ext; */
-/* in fact, the package name, below, must match the subdirectory from top_buildroot for Automake logic to work */
 package org.smallfoot.mdq;
 
 import java.io.*;
-//import java.io.BufferedReader;
-//import java.io.IOException;
-//import java.io.InputStream;
-//import java.io.InputStreamReader;
-////import java.sql.*;
-////import java.sql.Connection;
-////import java.sql.DriverManager;
-////import java.sql.SQLException;
 import java.text.*;
 import java.util.*;
 import gnu.getopt.Getopt;
 import gnu.getopt.LongOpt;
-////import org.smallfoot.xpath.*;
-//// chew away at these later
-////import org.smallfoot.xpath.XPathTool;
 import org.subethamail.smtp.server.SMTPServer;
 import org.subethamail.smtp.*;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.xpath.XPathConstants;
 import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
 import javax.mail.BodyPart;
 import javax.mail.Multipart;
 import javax.activation.DataHandler;
-////import org.w3c.dom.*;
+
+/* because I like parseable stuff */
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPathConstants;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -45,7 +33,7 @@ public class MailDropQueue implements MessageHandlerFactory
 {
     /** singleton */
     private Session _session = null;
-    /** singleton implementation */
+    /** singleton implementation for access to _session */
     protected Session session()
     {
         if (null == _session)
@@ -181,6 +169,7 @@ public class MailDropQueue implements MessageHandlerFactory
             else if (node.getAttribute("type").equalsIgnoreCase("equal"))
                 ctype = CritType.CT_EQUAL;
 
+	    /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
 for (String s: "sender,recipient,attachmentname".split(","))
             {
                 NodeList nl = node.getElementsByTagName(s);
@@ -276,6 +265,7 @@ for (String s: "sender,recipient,attachmentname".split(","))
         }
         public void apply(String addr_from, String addr_to, String filename)
         {
+	    /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
 for (String s: actionnames)
             {
                 System.out.println("Action: apply " + s + ": " + actions.get(s).toString() + " to this attachment");
@@ -343,6 +333,19 @@ for (String s: actionnames)
         }
     }
 
+    /**
+     * replace successive levels of $tokens with matching values limited by given depth of recursion
+     *
+     * This involves some very basic/simple/brain-dead token-replacement that isn't remotely
+     * sexy.  In fact, sexy coding left for the day, ugly/nasty/but-it-works is subbing in for
+     * this function.  So long as we have matches for a position of any token-replaceable
+     * string, replace then, and do it again...
+     *
+     * @return a reduced string with all successive tokens replaced with values
+     * @param depth how many levels of recursion to perform
+     * @param keys name/value pairs to replace in the string
+     * @param text test string to work upon
+     */
     static String tokenReplacement(int depth, java.util.Hashtable<String,String> keys, String text)
     {
         int replaced = 0;
@@ -394,9 +397,10 @@ for (String s: actionnames)
         {
             return super.toString() + " runs \"" + name + "\" script: " + script + " parameters: " + parameters;
         }
+
         /*
-         * Apply the action based on a trigger-match.  This involves some very basic/simple/brain-dead token-replacement that isn't remotely sexy.  In fact, sexy coding left for the day, ugly/nasty/but-it-works is subbing in for this function.
-             * So long as we have matches for a position of any token-replaceable string, replace then, and do it again...
+         * Apply the action based on a trigger-match.
+        *
          * @param addr_from Email address of attachment sender
          * @param addr_to Email address of attachment recipient on this fake-server
          * @param filename filename of attachment for use in running script
@@ -423,7 +427,7 @@ for (String s: actionnames)
                  * to avoid blocking, but going within this thread now to get this completed while accepting
                  * some risk.
                  *
-                 * @todo this should also be moved ot either a log message or a discard
+                 * @todo this should also be moved to either a log message or a discard
                      */
 
                 BufferedReader stdin = new BufferedReader(new InputStreamReader(pr.getInputStream()));
@@ -534,13 +538,14 @@ for (String s: actionnames)
                     System.out.println("file name : " + f.getName() + " (" + f.getCanonicalPath() + ")");
                     System.out.println("TO-FROM-FILENAME = " + mail_from + " " + mail_to + " " + f.getName());
 
+	            /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
 for (Trigger t: triggers)
                     {
                         if (t.applies(mail_from, mail_to, f.getName()))
-			{
-			    ((javax.mail.internet.MimeBodyPart) bodyPart).saveFile(f);
+                        {
+                            ((javax.mail.internet.MimeBodyPart) bodyPart).saveFile(f);
                             t.apply(mail_from, mail_to, f.getCanonicalPath());
-			}
+                        }
                         else
                             System.out.println("trigger " + t.name + " does not apply");
                     }
@@ -733,29 +738,38 @@ for (Trigger t: triggers)
     {
         MailDropQueue m = new MailDropQueue();
         SMTPServer smtpServer = new SMTPServer(m);
-        //smtpServer.setServer("mail.chickenandporn.com");	// VIMD spelled on a phone
-        smtpServer.setPort(8463);	// VIMD spelled on a phone
+        smtpServer.setPort(@TESTPORT@);
 
         int result=0;
         int c = 4;
         long dieMilliseconds = 0L;
         LongOpt[] longopts = new LongOpt[c];
-        //
-        // Integec id = new Integer();
+
         longopts[--c] = new LongOpt("help", LongOpt.NO_ARGUMENT, null, 'H');
         longopts[--c] = new LongOpt("version", LongOpt.NO_ARGUMENT, null, 'V');
 
         longopts[--c] = new LongOpt("debugdieafter", LongOpt.REQUIRED_ARGUMENT, null, 'd');
         longopts[--c] = new LongOpt("config", LongOpt.REQUIRED_ARGUMENT, null, 'c');
 
-        Getopt g = new org.smallfoot.getopt.GetOpt("vimd", args, longopts);
+	/* the following two @DO_SMALLFOOT... stuff causes either one or the other line's comment
+	 * termination to get bombed out -- effectively causing the comment block to continue to
+	 * the end of the line, where a comment brace awaits to trap the unterminated comment. 
+	 * Somewhat like a cartoon rabbit-trap made of a box baited with a carrot, but this trap
+	 * causes either one or the other "Getopt g = ..." to be uncommented, effectively honouring
+	 * the configure-level --with-smgetopt option at compile-time (well, config.status
+	 * -triggered compiler-parser-time)
+	 */
+
+	/* *@DO_SMALLFOOTGETOPT_TRUE@/	Getopt g = new org.smallfoot.getopt.GetOpt("maildropqueue", args, longopts);	/* */
+        /* *@DO_SMALLFOOTGETOPT_FALSE@/	Getopt g = new gnu.getopt.Getopt("maildropqueue", args, "HVd:c:", longopts);	/* */
         while ((c = g.getopt()) != -1)
         {
             switch(c)
             {
             case 'V':	// print the version, stored rules, and exit
-                System.out.println("vift"+" version @VERSION@-$Revision$");
+                System.out.println("maildropqueue"+" version @VERSION@-$Revision$");
                 System.out.println(m.triggers.size() + " triggers listed" + (0 < m.triggers.size() ? " as follows:" : ""));
+	        /* if the "for" code is slammed leftward, well, http://sourceforge.net/tracker/?func=detail&aid=1668571&group_id=2319&atid=102319 claims this doesn't happen in astyle-2.02.1.  Care to disagree? */
 for (Trigger t: m.triggers)
                     System.out.println("trigger: " + t.name );
                 System.out.println(m.actions.size() + " actions listed" + (0 < m.actions.size() ? " as follows:" : ""));
@@ -796,7 +810,7 @@ for (Trigger t: m.triggers)
                 //System.out.println("option \""+c+"\" selected");
                 //System.out.println("long index = "+g.getLongind());
             case 'H':
-                m.usage("vimd");
+                m.usage("maildropqueue");
                 return ;
             }
         }
@@ -806,6 +820,13 @@ for (Trigger t: m.triggers)
         {
             while ((0L == dieMilliseconds) || (java.lang.System.currentTimeMillis() < dieMilliseconds)) Thread.sleep(1000);
         }
+	/*
+	 * Pokemon exception -- gotta catch 'em all -- to catch interrupted execution...
+	 * we don't care why we stopped sleeping, just wake up and die. 
+	 *
+	 * Hmm.  "Wake Up and Die".
+         * Sounds like a new Ian Flemming novel set in a Retirement Home for Old Spies.
+	 */
         catch (Exception e) {}
         System.exit(result);
     }

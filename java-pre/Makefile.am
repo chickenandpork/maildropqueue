@@ -26,6 +26,6 @@ getopt.jar: java-getopt-1.0.13.jar
 	ln -f $^ $(@D)/.workdir/
 	for i in $(^F) ; do (cd $(@D)/.workdir  && jar xf $$i) ; done
 	find $(@D)/.workdir '(' -name \*.java -o -name \*.html -o -name Makefile -o -name ChangeLog -o -name LANGUAGES -o -name buildx.xml ')' -exec rm {} \;
-	(cd $(@D)/.workdir && jar cm MANIFEST.MF gnu org) > $@
+	(cd $(@D)/.workdir && jar cm MANIFEST.MF gnu) > $@
 	rm -fr $(@D)/.workdir
 	touch $@

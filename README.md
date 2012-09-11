@@ -1,7 +1,7 @@
 maildropqueue
 =============
 
-SubEthaSMTP-based Mail Drop that executes actions on reception
+SubEthaSMTP-based Mail Drop that executes actions on email reception
 
 In essense, it's a java-based daemon implemented mostly on the back of SubEthaSMTP, but
 offers some configuration for its actions.  It's relatively new.

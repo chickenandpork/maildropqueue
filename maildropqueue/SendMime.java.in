@@ -114,7 +114,7 @@ public class SendMime {
 
       // Setup mail server
       properties.setProperty("mail.smtp.host", "127.0.0.1");
-      properties.setProperty("mail.smtp.port", "8463");
+      properties.setProperty("mail.smtp.port", "@TESTPORT@");
 
       // Get the default Session object.
       Session session = Session.getDefaultInstance(properties);
@@ -158,7 +158,7 @@ public class SendMime {
       mp.addBodyPart(textPart);
       mp.addBodyPart(pixPart);
 
-      addAttachments( "SCaRTDaily1dat6hr.csv.zip".split(","), mp);
+      addAttachments( "Makefile.am".split(","), mp);
 
       // Put the MultiPart into the Message
       mesg.setContent(mp);

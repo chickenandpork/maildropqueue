@@ -111,15 +111,16 @@ AC_ARG_WITH(smgetopt,
 [AS_HELP_STRING([--with-smgetopt],[Enable smallfoot getopt; default=disabled])],
 [
     case "$withval" in
-	"yes") ENABSMGETOPT=yes ;;
-	"no")  ENABSMGETOPT=no  ;;
-	*) ENABSMGETOPT=no ;;
+	"yes") SMALLFOOT_GETOPT_URL=ftp://smallfoot.org/smallfoot-getopt.jar ;;
+	"no")  SMALLFOOT_GETOPT_URL=no  ;;
+	*) SMALLFOOT_GETOPT_URL="$withval" ;;
     esac
 ],
 [
-    ENABSMGETOPT=no
+    SMALLFOOT_GETOPT_URL=no
 ])
-AM_CONDITIONAL(DO_SMALLFOOTGETOPT, test "$ENABSMGETOPT" != no)
+AM_CONDITIONAL(DO_SMALLFOOTGETOPT, test "$SMALLFOOT_GETOPT_URL" != no)
+AC_SUBST([SMALLFOOT_GETOPT_URL], ${SMALLFOOT_GETOPT_URL})
 
 AC_ARG_WITH(testftpurl,
 [AS_HELP_STRING([--with-testftpurl],[Enable test of FTP upload by giving a destination URL; default=disabled])],

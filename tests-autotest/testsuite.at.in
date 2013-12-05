@@ -11,13 +11,18 @@ AT_CLEANUP()
 AT_SETUP(MailDispatcher)
 dnl      --------------
 
-AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -H], 0, [Usage: maildropqueue -V|--version|-H|--help
-], [])
+AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -H], 0, [[Usage: maildropqueue -V|--version|-H|--help
+     : maildropqueue [-d <seconds before selfterm>] [-c <configfile url>] [-p <port#>]
+   ie: maildropqueue -c file://config.xml -p 25
+   ie: maildropqueue -d 120 -c file://just-ftp-it.xml -p 8025
+
+    if maildropqueue has a custom Handler.class on its classpath, then you can use a config URL with scheme other than "file"
+]], [])
 
 AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -V], 0, [stdout],[])
 
 dnl FIXME
-AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version @VERSION@-$Revision$
 0 triggers listed
 0 actions listed
 
@@ -33,7 +38,7 @@ AT_DATA([actions.xml], [<?xml version='1.0' ?>
 AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -c file://actions.xml -V], 0, [stdout],[])
 
 dnl FIXME
-AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version @VERSION@-$Revision$
 1 triggers listed as follows:
 trigger: equal-recip
 1 actions listed as follows:
@@ -84,7 +89,7 @@ AT_CHECK([if test @WITHTESTFTPURL@ = no ; then exit 77; fi])
 
 AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -c file://action-ftp.xml -V], 0, [stdout],[])
 dnl FIXME
-AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version @VERSION@-$Revision$
 1 triggers listed as follows:
 trigger: all
 1 actions listed as follows:
@@ -128,7 +133,7 @@ AT_DATA([action-logonly.xml], [<?xml version='1.0' ?>
 
 AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -c file://action-logonly.xml -V], 0, [stdout],[])
 dnl FIXME
-AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version @VERSION@-$Revision$
 1 triggers listed as follows:
 trigger: all
 1 actions listed as follows:
@@ -174,7 +179,7 @@ AT_DATA([action-script.xml], [<?xml version='1.0' ?>
 
 AT_CHECK([java -jar $abs_srcdir/../maildropqueue/maildropqueue.jar -c file://action-script.xml -V], 0, [stdout],[])
 dnl FIXME
-AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version 0.2-$Revision$
+AT_CHECK([sed -e s/-[[0-9]]+$/-release-/g stdout], 0, [maildropqueue version @VERSION@-$Revision$
 1 triggers listed as follows:
 trigger: all
 1 actions listed as follows:
@@ -204,7 +209,7 @@ file name : Makefile.am (consistentpathname/testsuite.dir/5/Makefile.am)
 TO-FROM-FILENAME = example-sender@example.com example-cc@example.com Makefile.am
 Action: apply MD5BAT: action: MD5BAT runs "checksumbat" script: @MD5@ parameters: $attachmentname to this attachment
 script running (@MD5@ $attachmentname) is: "/sbin/md5 consistentpathname/testsuite.dir/5/Makefile.am"
-MD5 (consistentpathname/testsuite.dir/5/Makefile.am) = 28509d9567e981c0d858a8431c5a68af
+MD5 (consistentpathname/testsuite.dir/5/Makefile.am) = bfcaf689442703a6d0bd5c53d69a1fed
 script running (@MD5@ consistentpathname/testsuite.dir/5/Makefile.am) results in: 0
 Finished
 ], [ignore])

@@ -720,6 +720,10 @@ for (Trigger t: triggers)
     void usage(String progname)
     {
         System.out.println("Usage: "+progname+" -V|--version|-H|--help");
+        System.out.println("     : "+progname+" [-d <seconds before selfterm>] [-c <configfile url>] [-p <port#>]");
+        System.out.println("   ie: "+progname+" -c file://config.xml -p 25");
+        System.out.println("   ie: "+progname+" -d 120 -c file://just-ftp-it.xml -p 8025");
+        System.out.println("\n    if "+progname+" has a custom Handler.class on its classpath, then you can use a config URL with scheme other than \"file\"");
     }
 
 
@@ -741,7 +745,7 @@ for (Trigger t: triggers)
         smtpServer.setPort(@TESTPORT@);
 
         int result=0;
-        int c = 4;
+        int c = 5;
         long dieMilliseconds = 0L;
         LongOpt[] longopts = new LongOpt[c];
 
@@ -750,6 +754,7 @@ for (Trigger t: triggers)
 
         longopts[--c] = new LongOpt("debugdieafter", LongOpt.REQUIRED_ARGUMENT, null, 'd');
         longopts[--c] = new LongOpt("config", LongOpt.REQUIRED_ARGUMENT, null, 'c');
+        longopts[--c] = new LongOpt("port", LongOpt.REQUIRED_ARGUMENT, null, 'p');
 
         /* the following two @DO_SMALLFOOT... stuff causes either one or the other line's comment
          * termination to get bombed out -- effectively causing the comment block to continue to
@@ -761,7 +766,7 @@ for (Trigger t: triggers)
          */
 
         /* *@DO_SMALLFOOTGETOPT_TRUE@/	Getopt g = new org.smallfoot.getopt.GetOpt("maildropqueue", args, longopts);	/* */
-        /* *@DO_SMALLFOOTGETOPT_FALSE@/	Getopt g = new gnu.getopt.Getopt("maildropqueue", args, "HVd:c:", longopts);	/* */
+        /* *@DO_SMALLFOOTGETOPT_FALSE@/	Getopt g = new gnu.getopt.Getopt("maildropqueue", args, "HVd:c:p:", longopts);	/* */
         while ((c = g.getopt()) != -1)
         {
             switch(c)
@@ -777,6 +782,11 @@ for (Trigger t: m.triggers)
                     System.out.println(((Action) e.nextElement()).toString());
                 System.out.println();
                 return;
+
+            case 'p':	/* port number */
+		/* FIXME: @todo exception and bounds-checking here */
+                smtpServer.setPort(Integer.parseInt(g.getOptarg()));
+                break;
 
             case 'd':	// die after XX seconds
                 int seconds = Integer.parseInt(g.getOptarg());

@@ -1,0 +1,55 @@
+Summary: SubEthaSMTP-based Mail Drop that executes actions on email reception
+Name: @PACKAGE@
+Version: @VERSION@
+Release: @BUILDID@
+License: GPL2
+Group: System Environment/Utilites
+URL: http://tech.chickenandporn.com/
+Source0: http://chickenandporn.com/r/%{name}-%{version}.tar.bz2
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+BuildArchitectures: noarch
+#dammit, I hate the debug packages -- they even makes no sense in a non-executable payload
+%define debug_package %nil
+
+%description
+SubEthaSMTP-based Mail Drop that executes actions on email reception
+
+
+%package java
+Summary: SubEthaSMTP-based Mail Drop that executes actions on email reception
+Group: System Environment/Utilites
+
+%description java
+SubEthaSMTP-based Mail Drop that executes actions on email reception
+
+
+%prep
+%setup
+
+%build
+%configure %{?configure_additional:%{configure_additional}} && make
+
+%install
+make install DESTDIR=%{buildroot}
+rm %{buildroot}/%{_datadir}/@PACKAGE@/@PACKAGE@.class
+rm %{buildroot}/%{_datadir}/@PACKAGE@/getopt.jar
+rm -fr %{buildroot}/%{_datadir}/@PACKAGE@/jars
+
+%clean
+%{__rm} -rf %{buildroot}
+
+%check
+%{!?skipcheck:make check}
+
+
+%files
+%defattr(-, root, root, 0644)
+
+%files java
+# exported in maildropqueue/Makefile.am
+%{_datadir}/@PACKAGE@/@PACKAGE@.jar
+
+
+%changelog
+* Mon Dec 4 2013 Allan Clark <allanc@chickenandporn.com> - 1.0-1
+- Initial package (split from fctools-0.2-599)

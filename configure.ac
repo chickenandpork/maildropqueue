@@ -38,6 +38,20 @@ CHECKMD5=$(${MD5} tests-autotest/Makefile.am | ${AWK} '{if (2 == NF) print $1 ; 
 UCHECKMD5=$(echo "${CHECKMD5}" | tr "[a-z]" "[A-Z]")
 AC_SUBST([CHECKMD5], ${CHECKMD5})
 AC_SUBST([UCHECKMD5], ${UCHECKMD5})
+
+AC_PATH_PROGS(GIT, [git], [missing])
+AC_MSG_CHECKING([version agreement with git tag])
+BUILDID=$( (git describe; cat gitdescribe) 2>/dev/null |head -1| cut -d "-" -f 2)
+CHKVER=$( (git describe; cat gitdescribe) 2>/dev/null |head -1| cut -d "-" -f 1)
+if test "${CHKVER}" = "${VERSION}"
+then
+  AC_MSG_RESULT([ok])
+else
+  AC_MSG_WARN([version mismatch])
+fi
+AC_SUBST(BUILDID)
+AM_CONDITIONAL(DO_GITFORMATTING, test "$GIT" != "missing git" -a -f .git/config)
+
 AC_PATH_PROGS(RPMBUILD, [rpmbuild], [missing rpmbuild])
 AM_CONDITIONAL(HAVE_RPMBUILD, [test "x$RPMBUILD" != "xmissing rpmbuild"])
 
@@ -142,6 +156,12 @@ AC_CONFIG_FILES(Makefile
   maildropqueue/Makefile maildropqueue/MailDropQueue.java maildropqueue/SendMime.java
   tests-autotest/Makefile tests-autotest/atlocal tests-autotest/testsuite.at
 )
+
+if test "x$RPMBUILD" != "xmissing rpmbuild"
+then
+  AC_CONFIG_FILES(maildropqueue.spec:pkg/rpm/maildropqueue.spec.in)
+fi
+
 
 if test "x$DOXYGEN" != "xmissing"
 then

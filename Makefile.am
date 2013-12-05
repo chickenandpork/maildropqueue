@@ -24,7 +24,9 @@ endif
 endif
 
 if DO_GITFORMATTING
-gitdescribe: .git/ORIG_HEAD
+gitdescribe: .git/index
 	git describe > $@
+	touch configure
+	rm @PACKAGE@.spec
 endif DO_GITFORMATTING
 

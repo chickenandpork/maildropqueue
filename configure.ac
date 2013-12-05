@@ -5,7 +5,7 @@ dnl
 dnl the fasttrack to using this: "autoreconf -vfi && ./configure && make"
 dnl ***********************************************************************
 #AC_INIT(install-sh)
-AC_INIT(maildropqueue, 0.2)
+AC_INIT(maildropqueue, 0.3)
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_CANONICAL_HOST
